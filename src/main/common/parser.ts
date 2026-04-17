@@ -336,3 +336,19 @@ export function submitStatXmlString(statObj: StatEntry) {
 export function getWidgetsFromRequiredFiles(files: RequiredFile[]): RequiredFile[] {
   return files.filter(file => file.type === 'widget');
 }
+
+/**
+ * Escapes special characters so the string can be safely used in XML.
+ *
+ * @param unsafe
+ */
+export function escapeStringForXml(unsafe: string | null): string {
+    if (!unsafe) return '';
+
+    return unsafe
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}

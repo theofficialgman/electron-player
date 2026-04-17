@@ -69,6 +69,10 @@ export interface PlayerAPI {
   sendStatsBCMessage: (payload: any) => void;
   onStatsBCMessage: (callback: (payload: any) => void) => void;
 
+  // Broadcast channel for faults
+  reportFault: (faultData: any) => void;
+  onReportFault: (callback: (faultData: any) => void) => void;
+
   // Callbacks
   requestCallback: () => Promise<{ callbackName: string }>;
   invokeCallback: (callbackName: string, ...args: any[]) => Promise<any>;

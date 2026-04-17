@@ -19,6 +19,9 @@
  * along with Xibo.  If not, see <http://www.gnu.org/licenses/>.
  */
 import xml2js from 'xml2js';
+import { DateTime, DurationLike } from 'luxon';
+import { setExpiry } from '../../common/parser';
+import { FaultCodes } from '../../../shared/faults/Faults';
 // import {DurationLike} from "luxon";
 
 export enum ErrorCodes {
@@ -80,18 +83,23 @@ export class Error {
           this.message = fault['faultstring'][0];
         }
 
+        if (this.code && this.code === 'Receiver') {
+          this.code = FaultCodes.FaultBadRequest;
+        }
+
         console.debug('[MAIN] Error > parse', {
           fault,
         });
+
+        let expiryDuration: DurationLike = { days: 1 };
+        console.fault(this.message, {
+          code: this.code,
+          date: DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss'),
+          expires: setExpiry(expiryDuration),
+          shouldParse: false,
+        });
       }
     });
-
-    // let expiryDuration: DurationLike = { days: 1 };
-    // // Check if we have a valid XML doc
-    // if (doc && doc.getElementsByTagName('parsererror').length > 0) {
-    //   this.message = response;
-    //   expiryDuration = { hours: 1 };
-    // }
   }
 
   getMsg() {

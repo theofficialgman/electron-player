@@ -74,6 +74,18 @@ export class Config {
   async load() {
     console.log(`Loading ${this.savePath}`);
 
+    console.alert(`Player version is ${this.versionCode}`, {
+      shouldParse: false,
+      eventType: 'Other',
+      alertType: 'both',
+    });
+
+    console.alert(`Starting ${this.appType} application`, {
+      shouldParse: false,
+      eventType: 'App Start',
+      alertType: 'both',
+    });
+
     try {
       let data = await fs.readFile(this.savePath);
       data = JSON.parse(data);
@@ -107,6 +119,10 @@ export class Config {
 
   async save() {
     console.log(`Saving ${this.savePath}`);
+    // Clear sensitive info before saving
+    await fs.writeFile(this.savePath, '');
+
+    // Save main config
     await fs.writeFile(
       this.savePath,
       JSON.stringify({
@@ -115,12 +131,17 @@ export class Config {
         cmsUrl: this.cmsUrl,
         cmsKey: this.cmsKey,
         macAddress: this.macAddress,
+        platform: this.platform,
       }, null, 2),
     );
   };
 
   async saveCms() {
     console.log(`Saving ${this.cmsSavePath}`);
+    // Clear sensitive info before saving
+    await fs.writeFile(this.cmsSavePath, '');
+
+    // Save CMS settings
     await fs.writeFile(
       this.cmsSavePath,
       JSON.stringify({

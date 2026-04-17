@@ -20,7 +20,7 @@
  */
 // @ts-ignore
 import { contextBridge, ipcRenderer } from 'electron/renderer';
-import { createExtendedConsole, serializeArgs } from '../shared/console/ExtendedConsole';
+import { createExtendedConsole, registerConfigAdapter, serializeArgs } from '../shared/console/ExtendedConsole';
 import { ApiHandler, ConfigData, PlayerAPI } from '../shared/types';
 import { IXlrEvents } from '@xibosignage/xibo-layout-renderer';
 
@@ -28,11 +28,13 @@ import { IXlrEvents } from '@xibosignage/xibo-layout-renderer';
 const extendedConsole = createExtendedConsole({
   context: 'renderer',
   sendToMain: (level, args) => {
-    const logMessage = serializeArgs(args);
-    console._log(`[ExtendedConsole::Renderer]`, { logMessage, args });
+    const logMessage = serializeArgs(args, level);
+    console._log(`[ExtendedConsole::Renderer]`, { level, logMessage, args });
     ipcRenderer.invoke('renderer-log', level, logMessage);
   },
 });
+
+registerConfigAdapter({ getConfig: () => ipcRenderer.invoke('get-config') });
 
 // Replace global console in renderer
 (globalThis as any).console = extendedConsole;
@@ -75,6 +77,12 @@ const playerApi: PlayerAPI = {
   sendStatsBCMessage: (payload: any) => ipcRenderer.send('stats-bc-message', payload),
   onStatsBCMessage: (callback: (payload: any) => void) => {
     ipcRenderer.on('stats-bc-message', (_event, payload) => callback(payload));
+  },
+
+  // Broadcast channel for faults
+  reportFault: (faultData: any) => ipcRenderer.send('report-fault', faultData),
+  onReportFault: (callback: (faultData: any) => void) => {
+    ipcRenderer.on('report-fault', (_event, faultData) => callback(faultData));
   },
 
   requestCallback: async () => {

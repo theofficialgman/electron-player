@@ -47,6 +47,14 @@ bc.addEventListener('message', (event) => {
   window.playerAPI.sendStatsBCMessage(eventData);
 });
 
+const faultsBC = new BroadcastChannel('player-faults-bc');
+
+faultsBC.addEventListener('message', (event) => {
+  const faultData = event.data;
+  console.debug('[Renderer::BroadcastChannel:player-faults-bc] Received fault data', faultData);
+  window.playerAPI.reportFault(faultData);
+});
+
 const runConfigHandler = async (config: ConfigData) => {
   const { callbackName } = await window.playerAPI.requestCallback();
   const mainCallback = async (...args) => {

@@ -24,6 +24,12 @@ export interface LogEntry {
   alertType?: LogAlertType;
   refId?: number;
   log?: Record<string, any>
+  code?: string;
+  count?: number;
+  date?: string;
+  expires?: string;
+  regionId?: number;
+  widgetId?: number;
 }
 
 export class ConsoleDB {
@@ -36,11 +42,18 @@ export class ConsoleDB {
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
     const dbPath = path.join(logsDir, 'console-logs.db');
+    const tableName = 'logs';
     this.db = new Database(dbPath);
+
+    // WAL mode allows concurrent readers and a single writer without full database locks.
+    // busy_timeout retries for up to 5s before throwing SQLITE_BUSY, preventing
+    // transient lock errors from stale journal files or brief write contention.
+    this.db.pragma('journal_mode = WAL');
+    this.db.pragma('busy_timeout = 5000');
 
     this.db
       .exec(
-        `CREATE TABLE IF NOT EXISTS logs (
+        `CREATE TABLE IF NOT EXISTS ${tableName} (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           uid TEXT,
           level TEXT,
@@ -58,9 +71,29 @@ export class ConsoleDB {
         )`
       );
 
+    // Get existing columns in the logs table
+    const existingColumnsStmt = this.db.prepare(`PRAGMA table_info(${tableName})`);
+    const existingColumns = existingColumnsStmt.all().map((col: any) => col.name);
+
+    // If new columns don't exist, add them to the table
+    const newColumns = [
+      { name: 'code', type: 'TEXT' },
+      { name: 'count', type: 'INTEGER' },
+      { name: 'date', type: 'TEXT' },
+      { name: 'expires', type: 'TEXT' },
+      { name: 'regionId', type: 'INTEGER' },
+      { name: 'widgetId', type: 'INTEGER' },
+    ];
+    newColumns.forEach(column => {
+      if (!existingColumns.includes(column.name)) {
+        // Note: Columns names cannot be parameterized in DDL statements, so we need to interpolate them directly into the query string
+        this.db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type}`).run();
+      }
+    });
+
     this.insertStmt = this.db.prepare(`
-      INSERT INTO logs (uid, level, message, timestamp, context, method, scheduleId, layoutId, mediaId, category, eventType, alertType, refId)
-      VALUES (@uid, @level, @message, @timestamp, @context, @method, @scheduleId, @layoutId, @mediaId, @category, @eventType, @alertType, @refId)
+      INSERT INTO logs (uid, level, message, timestamp, context, method, scheduleId, layoutId, mediaId, category, eventType, alertType, refId, code, count, date, expires, regionId, widgetId)
+      VALUES (@uid, @level, @message, @timestamp, @context, @method, @scheduleId, @layoutId, @mediaId, @category, @eventType, @alertType, @refId, @code, @count, @date, @expires, @regionId, @widgetId)
     `);
   }
 
@@ -79,6 +112,12 @@ export class ConsoleDB {
       eventType: entry.eventType || null,
       alertType: entry.alertType || null,
       refId: entry.refId || null,
+      code: entry.code || null,
+      count: entry.count || null,
+      date: entry.date || null,
+      expires: entry.expires || null,
+      regionId: entry.regionId || null,
+      widgetId: entry.widgetId || null,
     });
   }
 
@@ -118,5 +157,16 @@ export class ConsoleDB {
 
     // Execute the statement with the array of IDs
     stmt.run(...idsToDelete);
+  }
+
+  deleteLogsByCategory(logCategory: LogCategoryType) {
+    if (!logCategory) {
+      return;
+    }
+
+    const stmt = this.db.prepare(`DELETE FROM logs WHERE category = ?`);
+
+    // Execute deletion of logs by given category
+    stmt.run(logCategory);
   }
 }

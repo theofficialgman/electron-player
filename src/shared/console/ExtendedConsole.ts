@@ -65,30 +65,24 @@ export function createExtendedConsole(
     // Load app config and get log level
     const config = await loadConfig() as ConfigData;
 
-    // await config.load();
     const logLevel = config?.settings?.logLevel ?? 'error';
 
-    // Don't save logs when logLevel is 'off' or 'error'
-    if (
-      ['debug', 'info', 'log'].includes(level) &&
-      (logLevel === 'off' || logLevel === 'error')
-    ) {
+    // When logging is completely disabled, stop here
+    if (logLevel === 'off') {
       return;
     }
 
-    // Error logs are always saved unless logLevel is 'off' or not 'error'
-    if (level === 'error' &&
-      (logLevel === 'off' || logLevel !== 'error')
-    ) {
-      return;
-    }
+    // Determine whether this log should be written to the DB based on logLevel
+    const shouldWriteToDB =
+      !(['debug', 'info', 'log'].includes(level) && logLevel === 'error') &&
+      !(level === 'error' && logLevel !== 'error');
 
-    if (db) {
+    if (db && shouldWriteToDB) {
       let logEntry = getLogEntryFromArgs(undefined, data) as LogEntry | undefined;
 
       // Try to serialize data
       if (!logEntry) {
-        logEntry = serializeArgs(data.flat()) as LogEntry;
+        logEntry = serializeArgs(data.flat(), level) as LogEntry;
       }
 
       if (logEntry && isLogEntry(logEntry)) {
@@ -102,11 +96,17 @@ export function createExtendedConsole(
         logEntry.message = he.encode(logMsg);
         logEntry.category = levelsCategoryMap[level] as LogCategoryType;
 
-        db.insert(logEntry);
+        try {
+          db.insert(logEntry);
+        } catch (err) {
+          base.error(`[ExtendedConsole::${context}] Failed to write log to DB`, { error: err, logEntry });
+        }
       }
-
     }
 
+    // Always forward to main — the main process applies its own logLevel filter
+    // before writing to DB. Without this, renderer logs are silently dropped when
+    // the renderer context has no db of its own.
     if (sendToMain) {
       console._log(`[ExtendedConsole::${context}] Sending log to main`, { level, data });
       sendToMain(level, ...data);
@@ -176,10 +176,10 @@ export function createExtendedConsole(
   return extended;
 }
 
-export function serializeArgs(input: any[]): LogEntry {
+export function serializeArgs(input: any[], level: ConsoleLevel): LogEntry {
   const log: LogEntry = {
     uid: uuidv4(),
-    level: 'log',
+    level: level ?? 'log',
     message: '',
     timestamp: Date.now(),
     context: 'main',
@@ -191,7 +191,13 @@ export function serializeArgs(input: any[]): LogEntry {
     eventType: undefined,
     alertType: undefined,
     refId: undefined,
-    log: {} as Record<string, any>
+    log: {} as Record<string, any>,
+    code: undefined,
+    count: undefined,
+    date: undefined,
+    expires: undefined,
+    regionId: undefined,
+    widgetId: undefined,
   };
 
   let consoleDataObj: LogEntry | undefined = undefined;
@@ -230,6 +236,30 @@ export function serializeArgs(input: any[]): LogEntry {
 
   if (consoleDataObj && Boolean(consoleDataObj['refId'])) {
     log.refId = consoleDataObj['refId'];
+  }
+
+  if (consoleDataObj && Boolean(consoleDataObj['code'])) {
+    log.code = consoleDataObj['code'];
+  }
+
+  if (consoleDataObj && Boolean(consoleDataObj['count'])) {
+    log.count = consoleDataObj['count'];
+  }
+
+  if (consoleDataObj && Boolean(consoleDataObj['date'])) {
+    log.date = consoleDataObj['date'];
+  }
+
+  if (consoleDataObj && Boolean(consoleDataObj['expires'])) {
+    log.expires = consoleDataObj['expires'];
+  }
+
+  if (consoleDataObj && Boolean(consoleDataObj['regionId'])) {
+    log.regionId = consoleDataObj['regionId'];
+  }
+
+  if (consoleDataObj && Boolean(consoleDataObj['widgetId'])) {
+    log.widgetId = consoleDataObj['widgetId'];
   }
 
   const flat = flattenObject(input);
