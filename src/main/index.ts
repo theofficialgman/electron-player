@@ -124,7 +124,11 @@ let schedule: Schedule;
 let manager: ScheduleManager;
 
 const loadConfig = async () => {
+  console._log('[MAIN] > Loading config started');
+  const t = Date.now();
   await config.load();
+
+  console._log(`[MAIN] > Loading config finished in ${Date.now() - t}ms`);
 
   appConfig = JSON.parse(config.toJson());
 
@@ -225,9 +229,6 @@ const configureIpc = (win) => {
   ipcMain.on('report-fault', (_event, faultData) => {
     console.debug('[MAIN] report-fault event received', faultData);
     faults.emitter.emit('message', faultData);
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send('stats-bc-message', faultData);
-    });
   });
 };
 
@@ -416,13 +417,13 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
     );
     console.debug('[Xmds::collecIntervalTime] ' + xmds.collectIntervalTime + ' seconds');
   });
-  xmds.on('registered', (data) => {
+  xmds.on('registered', async (data) => {
     console.debug('[Xmds::on("registered")] > Registered', {
       registerDisplay: data,
       shouldParse: false,
     });
 
-    config.setConfig(data);
+    await config.setConfig(data);
 
     // XMDS register was a success, so we should create an XMR instance
     // TODO: Web Sockets are only supported by the CMS if the XMDS version is 7, otherwise ZeroMQ web sockets should be used.
@@ -588,7 +589,7 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
 
   xmds.on('reportFaults', async () => {
     console.debug('[Xmds::on("reportFaults")] > Reporting Faults');
-    await xmds.reportFaults(db);
+    await xmds.reportFaults(faults.toJson());
   });
 };
 

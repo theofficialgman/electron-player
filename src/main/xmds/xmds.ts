@@ -34,7 +34,6 @@ import { escapeStringForXml, submitLogsXmlString } from '../common/parser';
 import { AxiosErrorCodes, handleXmdsError } from '../common/error/XmdsError';
 import { commandManager } from '../../shared/command/commandManager';
 import { StateData } from '../common/state';
-import { Faults } from '../../shared/faults/Faults';
 
 interface XmdsEvents {
   collecting: () => void;
@@ -205,8 +204,8 @@ export class Xmds {
         await this.updateInterval(registerDisplay.getSetting('collectInterval', 300) as number);
 
         // Save config
-        this.config.save();
-        this.config.saveCms();
+        await this.config.save();
+        await this.config.saveCms();
 
         console.debug('Display registered', {
           method: 'XMDS::registerDisplay',
@@ -497,20 +496,17 @@ export class Xmds {
     }
   }
 
-  async reportFaults(db: ConsoleDB) {
+  async reportFaults(faults: string) {
     console.debug('[Xmds::reportFaults] Reporting Faults to CMS');
     try {
-      const faults = new Faults(db)
-      const faultsParam = faults.toJson();
-
-      console.debug('[XMDS::reportFaults] > faultsParam', faultsParam);
+      console.debug('[XMDS::reportFaults] > faults', faults);
 
       const soapXml = '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tns="urn:xmds" xmlns:types="urn:xmds/encodedTypes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">\n' +
           ' <soap:Body soap:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">\n' +
           '   <tns:ReportFaults>\n' +
           '     <serverKey xsi:type="xsd:string"><![CDATA[' + this.config.cmsKey + ']]></serverKey>\n' +
           '     <hardwareKey xsi:type="xsd:string">' + this.config.hardwareKey + '</hardwareKey>\n' +
-          '     <fault xsi:type-="xsd:string">' + escapeStringForXml(faultsParam) + '</fault>\n' +
+          '     <fault xsi:type-="xsd:string">' + escapeStringForXml(faults) + '</fault>\n' +
           '   </tns:ReportFaults>\n' +
           ' </soap:Body>\n' +
           '</soap:Envelope>';

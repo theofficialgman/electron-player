@@ -45,7 +45,6 @@ export class Faults {
     private db: ConsoleDB;
 
     emitter: Emitter<FaultsEvents> = createNanoEvents<FaultsEvents>();
-    bc: BroadcastChannel = new BroadcastChannel('player-faults-bc');
 
     constructor(db: ConsoleDB) {
         this.db = db;
@@ -67,10 +66,6 @@ export class Faults {
                 ...faultEntry,
                 shouldParse: false,
             });
-        });
-
-        this.bc.addEventListener('message', event => {
-            this.emitter.emit('message', event.data);
         });
     }
 
@@ -125,5 +120,3 @@ export class Faults {
         return JSON.stringify(faultData);
     }
 }
-
-export const faultsManager = new Faults(new ConsoleDB());

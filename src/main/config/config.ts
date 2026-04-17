@@ -41,6 +41,10 @@ export class Config {
   readonly cmsSavePath: string;
   readonly dbPath: string;
 
+  // Write queues — serialize concurrent writes per file
+  private _saveQueue: Promise<void> = Promise.resolve();
+  private _saveCmsQueue: Promise<void> = Promise.resolve();
+
   // State
   state: State;
 
@@ -118,13 +122,17 @@ export class Config {
   };
 
   async save() {
-    console.log(`Saving ${this.savePath}`);
-    // Clear sensitive info before saving
-    await fs.writeFile(this.savePath, '');
+    this._saveQueue = this._saveQueue
+      .then(() => this._doSave())
+      .catch((err) => console.error(`[Config::save] Failed to save config:`, err));
+    return this._saveQueue;
+  };
 
-    // Save main config
+  private async _doSave() {
+    console.log(`Saving ${this.savePath}`);
+    const tmp = this.savePath + '.tmp';
     await fs.writeFile(
-      this.savePath,
+      tmp,
       JSON.stringify({
         hardwareKey: this.hardwareKey,
         xmrChannel: this.xmrChannel,
@@ -134,22 +142,28 @@ export class Config {
         platform: this.platform,
       }, null, 2),
     );
+    await fs.rename(tmp, this.savePath);
   };
 
   async saveCms() {
-    console.log(`Saving ${this.cmsSavePath}`);
-    // Clear sensitive info before saving
-    await fs.writeFile(this.cmsSavePath, '');
+    this._saveCmsQueue = this._saveCmsQueue
+      .then(() => this._doSaveCms())
+      .catch((err) => console.error(`[Config::saveCms] Failed to save CMS config:`, err));
+    return this._saveCmsQueue;
+  };
 
-    // Save CMS settings
+  private async _doSaveCms() {
+    console.log(`Saving ${this.cmsSavePath}`);
+    const tmp = this.cmsSavePath + '.tmp';
     await fs.writeFile(
-      this.cmsSavePath,
+      tmp,
       JSON.stringify({
         displayName: this.displayName,
         xmdsVersion: this.xmdsVersion,
         settings: this.settings,
       }, null, 2),
     );
+    await fs.rename(tmp, this.cmsSavePath);
   };
 
   isConfigured() {
@@ -181,7 +195,7 @@ export class Config {
     this.settings['sendCurrentLayoutAsStatusUpdate'] = registerDisplay.getSetting('sendCurrentLayoutAsStatusUpdate', false);
     this.state.displayStatus = registerDisplay.status || 0;
 
-    this.saveCms();
+    await this.saveCms();
   }
 
   getSetting(setting: string, defaultValue?: any) {
