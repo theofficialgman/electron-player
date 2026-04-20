@@ -6,6 +6,9 @@ import { type StateData } from "../main/common/state";
 
 export { };
 
+declare const __APP_VERSION__: string;
+declare const __APP_VERSION_CODE__: number;
+
 declare global {
     interface Console {
         log: (...data: unknown[]) => void;

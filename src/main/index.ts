@@ -189,6 +189,15 @@ ipcMain.handle('execute-xlr-event', async (_event, { eventName, payload }: { eve
 
       await xmds.notifyStatus(['currentLayoutId']);
     }
+  } else if (eventName === 'layoutEnd' || eventName === 'overlayEnd') {
+    if (manager) {
+      await manager.incrementPlayCount(payload.scheduleId);
+      console.debug(`[MAIN] [execute-xlr-event] > Play count incremented`, {
+        event: eventName,
+        scheduleId: payload.scheduleId,
+        playStats: manager.getPlayStats(payload.scheduleId),
+      });
+    }
   } else if (eventName === 'commandCodeReceived') {
     // Handle command code received event
     await commandManager.executeCommandByCode(payload.commandCode);
@@ -589,7 +598,7 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
 
   xmds.on('reportFaults', async () => {
     console.debug('[Xmds::on("reportFaults")] > Reporting Faults');
-    await xmds.reportFaults(faults.toJson());
+    // await xmds.reportFaults(faults.toJson());
   });
 };
 
@@ -627,10 +636,10 @@ const mainFunctions = {
     await initXmdsEventHandlers(config, xmr);
 
     // Delete faults on app start/reboot
-    faults.clearDB('MAIN');
+    // faults.clearDB('MAIN');
 
     // Periodically check for expired faults and delete it
-    faults.clearExpired();
+    // faults.clearExpired();
 
     if (!manager) {
       manager = new ScheduleManager(schedule, config);

@@ -95,7 +95,7 @@ export class Faults {
     }
 
     toJson() {
-        const faults = this.db.getLogsByCategory('Fault', 1000);
+        const faults = this.db.getLogsByCategory('Fault');
 
         // Compose fault for XMDS submission
         const faultData = faults.reduce((faults, fault) => {

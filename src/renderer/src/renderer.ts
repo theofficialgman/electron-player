@@ -23,7 +23,7 @@ import './assets/main.css';
 import '@xibosignage/xibo-layout-renderer/dist/styles.css';
 
 import $ from 'jquery';
-import XiboLayoutRenderer, { ConsumerPlatform, IXlr, OptionsType } from '@xibosignage/xibo-layout-renderer';
+import XiboLayoutRenderer, { ConsumerPlatform, ELayoutState, IXlr, OptionsType } from '@xibosignage/xibo-layout-renderer';
 import DefaultLayout from './layout/defaultLayout';
 
 import { ConfigHandler } from './ConfigHandler';
@@ -104,6 +104,22 @@ const initXlrEventHandlers = function () {
 
     // await window.apiHandler.sendCurrentLayoutAsStatusUpdate(layout.layoutId);
     await window.apiHandler.executeXlrEvent('layoutStart', { layoutId: layout.layoutId });
+  });
+
+  xlr.on('layoutEnd', async (layout) => {
+    if (layout.state !== ELayoutState.PLAYED) return;
+    console.debug('[RENDERER] [XLR::on("layoutEnd")] > Layout ended', {
+      scheduleId: layout.scheduleId,
+    });
+    await window.apiHandler.executeXlrEvent('layoutEnd', { scheduleId: layout.scheduleId });
+  });
+
+  xlr.on('overlayEnd', async (overlay) => {
+    if (overlay.state !== ELayoutState.PLAYED) return;
+    console.debug('[RENDERER] [XLR::on("overlayEnd")] > Overlay ended', {
+      scheduleId: overlay.scheduleId,
+    });
+    await window.apiHandler.executeXlrEvent('overlayEnd', { scheduleId: overlay.scheduleId });
   });
 }
 

@@ -33,8 +33,8 @@ export class Config {
   readonly appType: string = 'electron';
 
   // App information
-  readonly version: string = "v4 R403";
-  readonly versionCode: number = 403;
+  readonly version: string = __APP_VERSION__;
+  readonly versionCode: number = __APP_VERSION_CODE__;
 
   // Config file
   readonly savePath: string;
@@ -72,7 +72,7 @@ export class Config {
     this.dbPath = join(savePath, 'playerDb.db');
     this.settings = {};
     this.state = state;
-    this.state.appVersionCode = process.env.APP_VERSION_CODE || this.versionCode;
+    this.state.appVersionCode = this.versionCode;
   };
 
   async load() {
