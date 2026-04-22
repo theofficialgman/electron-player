@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import { DateTime } from 'luxon';
 
 import { LogAlertEventType, LogAlertType, LogCategoryType } from "../loggerLib";
 import { LogsThreshold } from "../../main/common/types";
@@ -35,6 +36,7 @@ export interface LogEntry {
 export class ConsoleDB {
   private db: Database.Database;
   private insertStmt: Database.Statement;
+  private dedupFaultStmt: Database.Statement;
 
   constructor() {
     const userDataPath = app.getPath('userData');
@@ -68,7 +70,9 @@ export class ConsoleDB {
           eventType TEXT,
           alertType TEXT,
           refId INTEGER
-        )`
+        );
+        CREATE INDEX IF NOT EXISTS idx_logs_category ON ${tableName} (category);
+        CREATE INDEX IF NOT EXISTS idx_logs_category_ts ON ${tableName} (category, timestamp DESC);`
       );
 
     // Get existing columns in the logs table
@@ -94,6 +98,20 @@ export class ConsoleDB {
     this.insertStmt = this.db.prepare(`
       INSERT INTO logs (uid, level, message, timestamp, context, method, scheduleId, layoutId, mediaId, category, eventType, alertType, refId, code, count, date, expires, regionId, widgetId)
       VALUES (@uid, @level, @message, @timestamp, @context, @method, @scheduleId, @layoutId, @mediaId, @category, @eventType, @alertType, @refId, @code, @count, @date, @expires, @regionId, @widgetId)
+    `);
+
+    // Prepared after migrations so all columns (code, regionId, widgetId, scheduleId) are guaranteed to exist
+    this.dedupFaultStmt = this.db.prepare(`
+      SELECT id FROM logs
+      WHERE category = 'Fault'
+        AND code IS ?
+        AND layoutId IS ?
+        AND regionId IS ?
+        AND widgetId IS ?
+        AND mediaId IS ?
+        AND scheduleId IS ?
+        AND (expires IS NULL OR expires > ?)
+      LIMIT 1
     `);
   }
 
@@ -168,5 +186,43 @@ export class ConsoleDB {
 
     // Execute deletion of logs by given category
     stmt.run(logCategory);
+  }
+
+  /**
+   * Returns true if a non-expired Fault entry already exists for the given key combination.
+   * Uses SQLite IS operator for NULL-safe equality on nullable ID columns.
+   */
+  faultExists(
+    code: string | null,
+    ids: {
+      layoutId?: number | null;
+      regionId?: number | null;
+      widgetId?: number | null;
+      mediaId?: number | null;
+      scheduleId?: number | null;
+    }
+  ): boolean {
+    const now = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
+    const result = this.dedupFaultStmt.get(
+      code ?? null,
+      ids.layoutId ?? null,
+      ids.regionId ?? null,
+      ids.widgetId ?? null,
+      ids.mediaId ?? null,
+      ids.scheduleId ?? null,
+      now
+    );
+    return result !== undefined;
+  }
+
+  deleteExpiredByCategory(logCategory: LogCategoryType) {
+    if (!logCategory) {
+      return;
+    }
+
+    const now = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
+    this.db.prepare(
+      `DELETE FROM logs WHERE category = ? AND expires IS NOT NULL AND expires < ?`
+    ).run(logCategory, now);
   }
 }

@@ -88,7 +88,11 @@ axios.interceptors.response.use(
 
 const popStats = new PoPStats();
 const db = new ConsoleDB();
-const consoleMain = createExtendedConsole({ db, context: 'main' });
+const consoleMain = createExtendedConsole({
+  db,
+  context: 'main',
+  getLogLevel: () => config.getSetting('logLevel', 'error'),
+});
 const faults = new Faults(db);
 
 // Replace global console in main
@@ -596,9 +600,16 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
     }
   });
 
+  let isReportingFaults = false;
   xmds.on('reportFaults', async () => {
-    console.debug('[Xmds::on("reportFaults")] > Reporting Faults');
-    // await xmds.reportFaults(faults.toJson());
+    if (isReportingFaults) return;
+    isReportingFaults = true;
+    try {
+      console.debug('[Xmds::on("reportFaults")] > Reporting Faults');
+      await xmds.reportFaults(faults.toJson());
+    } finally {
+      isReportingFaults = false;
+    }
   });
 };
 
@@ -636,10 +647,10 @@ const mainFunctions = {
     await initXmdsEventHandlers(config, xmr);
 
     // Delete faults on app start/reboot
-    // faults.clearDB('MAIN');
+    faults.clearDB('MAIN');
 
     // Periodically check for expired faults and delete it
-    // faults.clearExpired();
+    faults.clear();
 
     if (!manager) {
       manager = new ScheduleManager(schedule, config);

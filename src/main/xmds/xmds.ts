@@ -499,7 +499,6 @@ export class Xmds {
   async reportFaults(faults: string) {
     console.debug('[Xmds::reportFaults] Reporting Faults to CMS');
     try {
-      console.debug('[XMDS::reportFaults] > faults', faults);
 
       const soapXml = '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tns="urn:xmds" xmlns:types="urn:xmds/encodedTypes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">\n' +
           ' <soap:Body soap:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">\n' +

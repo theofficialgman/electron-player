@@ -84,7 +84,7 @@ export class Error {
         }
 
         if (this.code && this.code === 'Receiver') {
-          this.code = FaultCodes.FaultBadRequest;
+          this.code = String(FaultCodes.FaultBadRequest);
         }
 
         console.debug('[MAIN] Error > parse', {

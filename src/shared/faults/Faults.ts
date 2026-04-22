@@ -45,6 +45,7 @@ export class Faults {
     private db: ConsoleDB;
 
     emitter: Emitter<FaultsEvents> = createNanoEvents<FaultsEvents>();
+    clearIntervalId: NodeJS.Timeout | null = null;
 
     constructor(db: ConsoleDB) {
         this.db = db;
@@ -52,13 +53,26 @@ export class Faults {
         this.on('message', data => {
             const faultEntry: Partial<FaultLogEntry> = {
                 message: data?.reason || null,
-                code: data?.code || 5002,
+                code: String(parseInt(data?.code || FaultCodes.FaultGeneralError.toString())),
                 mediaId: data?.mediaId || null,
                 regionId: data?.regionId || null,
+                widgetId: data?.widgetId || null,
                 layoutId: data?.layoutId || null,
+                scheduleId: data?.scheduleId || null,
                 date: data?.date || DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss'),
                 expires: data?.expires || setExpiry({days: 1}),
             }
+
+            if (this.db.faultExists(String(faultEntry.code ?? FaultCodes.FaultGeneralError), {
+                layoutId: faultEntry.layoutId,
+                regionId: faultEntry.regionId,
+                widgetId: faultEntry.widgetId,
+                mediaId: faultEntry.mediaId,
+                scheduleId: faultEntry.scheduleId,
+            })) {
+                return;
+            }
+
             console.debug('[Faults::on("message")] > New fault reported', {
                 faultEntry,
             });
@@ -87,11 +101,31 @@ export class Faults {
     }
 
     /**
+     * Clear faults
+     * @param interval Interval in seconds
+     */
+    clear(interval = 10) {
+        if (this.clearIntervalId !== null) {
+            clearInterval(this.clearIntervalId);
+        }
+
+        this.clearIntervalId = setInterval(async () => {
+            this.clearExpired();
+        }, interval * 1000);
+
+        this.clearExpired();
+    }
+
+    /**
      * Clear expired faults
      * @param interval Interval in seconds
      */
-    clearExpired(interval = 10) {
-
+    clearExpired() {
+        try {
+            this.db.deleteExpiredByCategory('Fault');
+        } catch (err) {
+            console.warn('[Faults::clearExpired] - Failed to delete expired faults', err);
+        }
     }
 
     toJson() {
@@ -111,7 +145,8 @@ export class Faults {
                 regionId: fault.regionId ?? null,
                 widgetId: fault.widgetId ?? null,
                 layoutId: fault.layoutId ?? null,
-                scheduleId: fault.scheduleId ?? null
+                scheduleId: fault.scheduleId ?? null,
+                expires: fault.expires ?? null,
             };
 
             return [...faults, faultItem];

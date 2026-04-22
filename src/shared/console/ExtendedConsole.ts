@@ -4,7 +4,6 @@ import he from 'he';
 import type { ConsoleDB, LogEntry } from './ConsoleDB';
 import { flatLogObj, FlattenedObject, flattenObject, unflattenObject } from '../../main/common/parser';
 import { LogCategoryType } from '../loggerLib';
-import { ConfigData } from '../types';
 
 export interface ConfigAdapter {
   getConfig(): Promise<any> | any;
@@ -56,16 +55,14 @@ export function createExtendedConsole(
     db?: ConsoleDB;
     context: 'main' | 'renderer';
     sendToMain?: (level: ConsoleLevel, ...args: any[]) => void;
+    getLogLevel?: () => string;
   }
 ): ExtendedConsole {
   const { db, context = 'main', sendToMain } = opts;
   const base = globalThis.console;
 
-  const logToDB = async (level: ConsoleLevel, ...data: any[]) => {
-    // Load app config and get log level
-    const config = await loadConfig() as ConfigData;
-
-    const logLevel = config?.settings?.logLevel ?? 'error';
+  const logToDB = (level: ConsoleLevel, ...data: any[]) => {
+    const logLevel = opts.getLogLevel ? opts.getLogLevel() : 'error';
 
     // When logging is completely disabled, stop here
     if (logLevel === 'off') {
@@ -92,9 +89,24 @@ export function createExtendedConsole(
 
       if (logEntry) {
         // Escape message to prevent issues with special characters
-        const logMsg = "<![CDATA[" + logEntry.message + "]]>"
+        let logMsg = logEntry.message;
+
+        if (level !== 'fault') {
+          logMsg = "<![CDATA[" + logEntry.message + "]]>"
+        }
+
         logEntry.message = he.encode(logMsg);
         logEntry.category = levelsCategoryMap[level] as LogCategoryType;
+
+        if (level === 'fault' && db.faultExists(logEntry.code ?? null, {
+          layoutId: logEntry.layoutId ?? null,
+          regionId: logEntry.regionId ?? null,
+          widgetId: logEntry.widgetId ?? null,
+          mediaId: logEntry.mediaId ?? null,
+          scheduleId: logEntry.scheduleId ?? null,
+        })) {
+          return;
+        }
 
         try {
           db.insert(logEntry);
@@ -239,7 +251,7 @@ export function serializeArgs(input: any[], level: ConsoleLevel): LogEntry {
   }
 
   if (consoleDataObj && Boolean(consoleDataObj['code'])) {
-    log.code = consoleDataObj['code'];
+    log.code = String(parseInt(String(consoleDataObj['code'])));
   }
 
   if (consoleDataObj && Boolean(consoleDataObj['count'])) {
