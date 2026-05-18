@@ -38,7 +38,7 @@ import { Config } from './config/config';
 import { Xmds } from './xmds/xmds';
 import { State } from './common/state';
 import { createFileServer } from './express';
-import { downloadFile, downloadResourceFile, getDownloadedFiles, getLayoutFile, FileManagerFileType, downloadWidgetDataFile, getWidgetFile } from './common/fileManager';
+import { downloadFile, downloadResourceFile, getDownloadedFiles, getLayoutFile, FileManagerFileType, downloadWidgetDataFile, getWidgetFile, purge } from './common/fileManager';
 import Schedule from './xmds/response/schedule/schedule';
 import ScheduleManager from './common/scheduleManager';
 import { InputLayoutType, LocalFile, RequiredFile } from './common/types';
@@ -598,12 +598,22 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
       await data.composeMediaInventory(true),
     );
 
+    // Clean up files marked for purge
+    if (data.purge?.length) {
+      console.debug('[Xmds::on("requiredFiles")] purge list received', {
+        purgeCount: data.purge.length,
+        purgeItems: data.purge.map(p => p.storedAs),
+        method: 'XMDS::requiredFiles',
+      });
+      purge(data.purge);
+    }
+
     // Count how many of the required files are present in local storage
     const inventory = getDownloadedFiles();
     const inventoryNames = new Set(inventory.map(f => (f as { name: string }).name));
     config.state.requiredFilesCount = data.files.length;
 
-    // Each file type is stored under a different name in the DB — find which ones are not yet present
+    // Each file type is stored under a different name in the DB. Find which ones are not yet present
     const missingFiles = data.files.filter(file => {
       if (file.type === 'resource') {
         return !inventoryNames.has(`layout_${file.layoutId}_region_${file.regionId}_media_${file.mediaId}.html`);

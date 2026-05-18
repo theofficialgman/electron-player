@@ -21,6 +21,12 @@ export type FileManagerFileType =  RequiredFile & {
     lastDownloaded: string;
 };
 
+
+export type PurgeItemType = {
+    id: number | null;
+    storedAs: string | null;
+};
+
 export async function downloadAndSaveFile(
     file: FileManagerFileType,
     options: {
@@ -288,4 +294,55 @@ export function getWidgetFile(fileId: number) {
     }
 
     return localFile;
+}
+
+
+export function purge(purgeList: PurgeItemType[]) {
+    console.debug('[FileManager] purge: start', {
+        total: purgeList.length,
+        method: 'FileManager::purge',
+    });
+
+    for (const item of purgeList) {
+        if (!item.storedAs) {
+            console.debug('[FileManager] purge: skipped invalid item', { item, method: 'FileManager::purge' });
+            continue;
+        }
+
+        const file = store.getByStoredAs(item.storedAs);
+
+        if (!file) {
+            console.debug('[FileManager] purge: file not found in DB, nothing to remove', {
+                storedAs: item.storedAs,
+                method: 'FileManager::purge',
+            });
+            continue;
+        }
+
+        // Remove from disk first. Only remove from DB if confirmed deleted.
+        // If deletion fails, leave the DB record intact so the next collection interval can retry.
+        if (file.localPath && fs.existsSync(file.localPath)) {
+            try {
+                fs.unlinkSync(file.localPath);
+            } catch (err) {
+                console.warn('[FileManager] purge: failed to delete file from disk, will retry in the next collection interval', {
+                    localPath: file.localPath,
+                    err,
+                    method: 'FileManager::purge',
+                });
+                continue;
+            }
+        }
+
+        // File is gone from disk (either just deleted, or was never there), safe to remove DB record.
+        store.deleteByStoredAs(item.storedAs);
+
+        console.debug('[FileManager] purge: removed', {
+            storedAs: item.storedAs,
+            localPath: file.localPath,
+            method: 'FileManager::purge',
+        });
+    }
+
+    console.debug('[FileManager] purge: done', { method: 'FileManager::purge' });
 }
