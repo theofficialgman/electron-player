@@ -401,6 +401,16 @@ const initXmrEventHandlers = async function () {
     await xmdsMakeScreenshot(xmds);
     await xmds.notifyStatus();
   });
+
+  /**
+   * Clears stats and logs from database.
+   */
+  xmr.on('clearStatsAndLogs', async () => {
+    console.debug('[XMR::clearStatsAndLogs] Clearing stats and Logs from local database');
+
+    db.deleteAllLogs();
+    popStats.clearDB();
+  });
   
   /**
    * Handle incoming schedule criteria updates from the CMS via XMR.

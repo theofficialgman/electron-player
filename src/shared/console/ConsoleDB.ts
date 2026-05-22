@@ -186,6 +186,13 @@ export class ConsoleDB {
     stmt.run(...idsToDelete);
   }
 
+  /**
+   * Deletes all log entries from the logs table.
+   */
+  deleteAllLogs() {
+    this.db.prepare('DELETE FROM logs').run();
+  }
+
   deleteLogsByCategory(logCategory: LogCategoryType) {
     if (!logCategory) {
       return;
