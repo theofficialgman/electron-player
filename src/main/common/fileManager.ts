@@ -21,6 +21,8 @@ export type FileManagerFileType =  RequiredFile & {
     lastDownloaded: string;
 };
 
+export let isPurging = false;
+
 export async function downloadAndSaveFile(
     file: FileManagerFileType,
     options: {
@@ -288,4 +290,46 @@ export function getWidgetFile(fileId: number) {
     }
 
     return localFile;
+}
+
+/**
+ * Clears all required files from the local library directory and removes their database records.
+ */
+export async function purgeAll() {
+    try {
+        isPurging = true;
+
+        console.debug('[FileManager] purgeAll: start', { method: 'FileManager::purgeAll' });
+
+        const files = store.getAll();
+        const failed: string[] = [];
+
+        for (const file of files) {
+            // Only attempt disk deletion if a local path is recorded and the file actually exists
+            if (file.localPath && fs.existsSync(file.localPath)) {
+                try {
+                    fs.unlinkSync(file.localPath);
+                } catch (err) {
+                    // Keep the DB record so the file does not go stale
+                    failed.push(file.localPath);
+                    continue;
+                }
+            }
+
+            // File is confirmed gone from disk (deleted just now, or was never stored), safe to remove DB record
+            store.deleteByStoredAs(file.name);
+        }
+
+        if (failed.length > 0) {
+            console.error('[FileManager] purgeAll: some files could not be deleted from disk and were kept in the database', {
+                failedFiles: failed,
+                method: 'FileManager::purgeAll',
+            });
+        }
+
+        console.debug('[FileManager] purgeAll: done', { method: 'FileManager::purgeAll' });
+    } finally {
+        // Always reset the flag, even if an unexpected error occurs mid-purge
+        isPurging = false;
+    }
 }

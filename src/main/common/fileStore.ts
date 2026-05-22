@@ -80,4 +80,12 @@ export class FileStore {
             SELECT * FROM files where type = 'widget' AND fileId = ?
         `).get(`${fileId}`) as FileManagerFileType | undefined;
     }
+
+    getAll(): LocalFile[] {
+        return this.db.prepare(`SELECT * FROM files`).all() as LocalFile[];
+    }
+
+    deleteByStoredAs(storedAs: string): Database.RunResult {
+        return this.db.prepare(`DELETE FROM files WHERE name = ?`).run(storedAs);
+    }
 }
