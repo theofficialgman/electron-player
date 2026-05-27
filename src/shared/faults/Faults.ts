@@ -144,7 +144,7 @@ export class Faults {
      * Returns all non-expired faults from the database.
      * @returns Active faults with their code and reason
      */
-    getActiveFaults(): Array<{code: number, reason: string, layoutId: number | null, scheduleId: number | null}> {
+    getActiveFaults(): Array<{code: number, reason: string, layoutId: number | null, scheduleId: number | null, mediaId: number | null}> {
         if (this._activeFaultsCache === null) {
             const faults = this.db.getLogsByCategory('Fault');
             this._activeFaultsCache = faults
