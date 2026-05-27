@@ -81,6 +81,10 @@ export class FileStore {
         `).get(`${fileId}`) as FileManagerFileType | undefined;
     }
 
+    getByStoredAs(storedAs: string): FileManagerFileType | undefined {
+        return this.db.prepare(`SELECT * FROM files WHERE name = ?`).get(storedAs) as FileManagerFileType | undefined;
+    }
+  
     getAll(): LocalFile[] {
         return this.db.prepare(`SELECT * FROM files`).all() as LocalFile[];
     }

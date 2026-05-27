@@ -46,6 +46,7 @@ import {
   FileManagerFileType,
   downloadWidgetDataFile,
   getWidgetFile,
+  purge,
   purgeAll,
   isPurging,
 } from './common/fileManager';
@@ -664,12 +665,22 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
       await data.composeMediaInventory(true),
     );
 
+    // Clean up files marked for purge
+    if (data.purge?.length) {
+      console.debug('[Xmds::on("requiredFiles")] purge list received', {
+        purgeCount: data.purge.length,
+        purgeItems: data.purge.map(p => p.storedAs),
+        method: 'XMDS::requiredFiles',
+      });
+      purge(data.purge);
+    }
+
     // Count how many of the required files are present in local storage
     const inventory = getDownloadedFiles();
     const inventoryNames = new Set(inventory.map(f => (f as { name: string }).name));
     config.state.requiredFilesCount = data.files.length;
 
-    // Each file type is stored under a different name in the DB — find which ones are not yet present
+    // Each file type is stored under a different name in the DB. Find which ones are not yet present
     const missingFiles = data.files.filter(file => {
       if (file.type === 'resource') {
         return !inventoryNames.has(`layout_${file.layoutId}_region_${file.regionId}_media_${file.mediaId}.html`);
