@@ -120,7 +120,6 @@ export function createExtendedConsole(
     // before writing to DB. Without this, renderer logs are silently dropped when
     // the renderer context has no db of its own.
     if (sendToMain) {
-      console._log(`[ExtendedConsole::${context}] Sending log to main`, { level, data });
       sendToMain(level, ...data);
     }
   }

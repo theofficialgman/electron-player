@@ -29,7 +29,6 @@ const extendedConsole = createExtendedConsole({
   context: 'renderer',
   sendToMain: (level, args) => {
     const logMessage = serializeArgs(args, level);
-    console._log(`[ExtendedConsole::Renderer]`, { level, logMessage, args });
     ipcRenderer.invoke('renderer-log', level, logMessage);
   },
 });
@@ -79,6 +78,7 @@ const playerApi: PlayerAPI = {
   onUpdateUniqueLayouts: (callback) => ipcRenderer.on('update-unique-layouts', (_event, value) => callback(value)),
   onUpdateOverlays: (callback) => ipcRenderer.on('update-overlays', (_event, value) => callback(value)),
   onShowStatusWindow: (callback) => ipcRenderer.on('showStatusWindow', (_event, timeout) => callback(timeout)),
+  onTriggerWebhook: (callback) => ipcRenderer.on('trigger-webhook', (_event, triggerCode) => callback(triggerCode)),
 
   // Render to main
   openChildWindow: (url) => ipcRenderer.send('open-child-window', url),
