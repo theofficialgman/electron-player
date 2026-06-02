@@ -477,7 +477,7 @@ const initXmrEventHandlers = async function () {
     console.log('XMR Connected');
   });
   xmr.on('collectNow', () => {
-    console.debug('Requesting a collection immediately', { method: 'Xmr::screenShot' });
+    console.debug('Requesting a collection immediately', { method: 'Xmr::collectNow' });
     xmds.collectNow();
   });
   xmr.on('screenShot', async () => {
@@ -513,6 +513,15 @@ const initXmrEventHandlers = async function () {
   xmr.on('commandCodeReceived', async (commandCode) => {
     console.log('[Xmr::commandCodeReceived] - Received a new command', commandCode);
     await commandManager.executeCommandByCode(commandCode);
+  });
+
+  /**
+   * Handles an incoming webhook trigger from the CMS. Forwards the trigger code
+   * to the renderer so XLR can dispatch it to the active layout's action controller.
+   */
+  xmr.on('triggerWebhook', (triggerCode: string) => {
+    console.debug('[XMR::triggerWebhook] Received webhook trigger', { triggerCode });
+    mainWindow.webContents.send('trigger-webhook', triggerCode);
   });
 
   /**

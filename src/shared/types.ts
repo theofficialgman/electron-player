@@ -76,6 +76,7 @@ export interface PlayerAPI {
   onUpdateUniqueLayouts: (callback: (layouts: InputLayoutType[]) => void) => void;
   onUpdateOverlays: (callback: (overlays: InputLayoutType[]) => void) => void;
   onShowStatusWindow: (callback: (timeout: number) => void) => void;
+  onTriggerWebhook: (callback: (triggerCode: string) => void) => void;
 
   // Render to main
   openChildWindow: (url: string) => void;

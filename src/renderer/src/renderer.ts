@@ -293,6 +293,11 @@ window.playerAPI.onShowStatusWindow((timeout) => {
   showStatusWindowFn(timeout);
 });
 
+window.playerAPI.onTriggerWebhook((triggerCode: string) => {
+  console.debug('[Renderer::onTriggerWebhook] Dispatching webhook trigger to XLR', { triggerCode });
+  xlr.triggerAction(triggerCode);
+});
+
 let statusWindowHideTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showStatusWindowFn = (timeout: number) => {

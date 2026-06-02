@@ -3,7 +3,16 @@
   "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "src/renderer/src/lib", "src/shared/**/*", "src/types/global.d.ts", "src/renderer/src/ConfigHandler.ts"],
   "compilerOptions": {
     "composite": true,
-    "types": ["electron-vite/node"]
+    "types": ["electron-vite/node"],
+    "baseUrl": ".",
+    "paths": {
+      "@xibosignage/xibo-layout-renderer": [
+        "../xibo-layout-renderer/dist/xibo-layout-renderer.d.ts"
+      ],
+      "@xibosignage/xibo-communication-framework": [
+        "../xibo-communication-framework/dist/xibo-communication-framework.d.ts"
+      ]
+    }
   },
   "sourceMap": true
 }

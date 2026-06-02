@@ -30,15 +30,17 @@ export default defineConfig(({mode}) => {
     __APP_VERSION_CODE__: packageJson.versionCode || 0,
   };
 
-  let rollupOptions = {};
+  let devLibraries = [];
   let alias = {};
 
   if (mode !== 'production') {
-    rollupOptions = {
-      external: ['@xibosignage/xibo-layout-renderer'],
-    };
+    devLibraries = [
+      '@xibosignage/xibo-layout-renderer',
+      '@xibosignage/xibo-communication-framework',
+    ];
     alias = {
       '@xibosignage/xibo-layout-renderer': resolve(__dirname, '../xibo-layout-renderer'),
+      '@xibosignage/xibo-communication-framework': resolve(__dirname, '../xibo-communication-framework'),
     };
   }
 
@@ -47,7 +49,7 @@ export default defineConfig(({mode}) => {
       server: {
         hmr: false,
       },
-      plugins: [externalizeDepsPlugin()],
+      plugins: [externalizeDepsPlugin({exclude: devLibraries})],
       define: versionDefine,
       build: {
         sourcemap: true,
@@ -57,19 +59,22 @@ export default defineConfig(({mode}) => {
             index: resolve(__dirname, 'src/main/index.ts'),
             express: resolve(__dirname, 'src/main/express.ts'),
           },
-          external: ['better-sqlite3', ...(rollupOptions?.external || [])],
+          external: ['better-sqlite3'],
         },
       },
       resolve: {
         alias: {
           ...alias,
         },
+      },
+      optimizeDeps: {
+        exclude: devLibraries,
       },
     },
     preload: {
       build: {
         rollupOptions: {
-          external: rollupOptions?.external || [],
+          external: [],
         },
       },
       resolve: {
@@ -77,7 +82,7 @@ export default defineConfig(({mode}) => {
           ...alias,
         },
       },
-      plugins: [externalizeDepsPlugin(), bytecodePlugin()],
+      plugins: [externalizeDepsPlugin({exclude: devLibraries}), bytecodePlugin()],
     },
     renderer: {
       server: {
@@ -100,7 +105,7 @@ export default defineConfig(({mode}) => {
         },
       },
       optimizeDeps: {
-        exclude: rollupOptions?.external || [],
+        exclude: devLibraries,
       },
     },
   };

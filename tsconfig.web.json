@@ -21,6 +21,9 @@
       ],
       "@xibosignage/xibo-layout-renderer": [
         "../xibo-layout-renderer/dist/xibo-layout-renderer.d.ts"
+      ],
+      "@xibosignage/xibo-communication-framework": [
+        "../xibo-communication-framework/dist/xibo-communication-framework.d.ts"
       ]
     }
   }
