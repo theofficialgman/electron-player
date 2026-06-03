@@ -305,6 +305,9 @@ const collectAndPushStatus = async (win: BrowserWindow) => {
   config.state.activeFaults = faults.getActiveFaults();
   config.state.pendingStatsCount = popStats.getCount();
   config.state.pendingLogsCount = db.count();
+  config.state.globalDependenciesCount = manager?.globalDependenciesCount ?? 0;
+  config.state.globalDependenciesReadyCount = manager?.globalDependenciesReadyCount ?? 0;
+  config.state.missingGlobalDependencies = manager?.missingGlobalDependencies ?? [];
 
   const rawCriteria = scheduleCriteriaManager.getActiveCriteria();
   config.state.activeCriteria = Object.fromEntries(
@@ -790,6 +793,8 @@ const initXmdsEventHandlers = async function (config: Config, xmr: Xmr) {
       if (file.type === 'widget') return `${file.id}.json`;
       return file.saveAs ?? `${file.type}:${file.id}`;
     });
+
+    await manager?.checkGlobalDependencies();
   });
 
   xmds.on('schedule', async (data) => {
@@ -970,7 +975,7 @@ const mainFunctions = {
     }
 
     if (!manager) {
-      manager = new ScheduleManager(schedule, config);
+      manager = new ScheduleManager(schedule, config, faults);
 
       manager.on('layouts', async (layouts) => {
         console.debug({
