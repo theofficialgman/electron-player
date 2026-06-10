@@ -1,7 +1,7 @@
 {
   "name": "xibo-player",
-  "version": "4.0.6",
-  "versionCode": 406,
+  "version": "4.0.7",
+  "versionCode": 407,
   "description": "Xibo Digital Signage Player",
   "main": "./dist/main/index.js",
   "scripts": {
@@ -45,8 +45,8 @@
     "@types/he": "^1.2.3",
     "@types/luxon": "^3.7.1",
     "@types/xml2js": "^0.4.14",
-    "@xibosignage/xibo-communication-framework": "^0.0.9",
-    "@xibosignage/xibo-layout-renderer": "^1.0.29",
+    "@xibosignage/xibo-communication-framework": "https+git@github.com:xibosignage/xibo-communication-framework.git#b28581884fb8c09c4053a1bd2ac27bfaf429177a",
+    "@xibosignage/xibo-layout-renderer": "https+git@github.com:xibosignage/xibo-layout-renderer.git#2679cb749278003b2d0f7c92aad69b4fcc244aaa",
     "@xmldom/xmldom": "^0.9.10",
     "axios": "^1.8.4",
     "better-sqlite3": "^12.4.1",
