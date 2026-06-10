@@ -293,9 +293,24 @@ window.playerAPI.onShowStatusWindow((timeout) => {
   showStatusWindowFn(timeout);
 });
 
-window.playerAPI.onTriggerWebhook((triggerCode: string) => {
-  console.debug('[Renderer::onTriggerWebhook] Dispatching webhook trigger to XLR', { triggerCode });
-  xlr.triggerAction(triggerCode);
+window.playerAPI.onTriggerWebhook(({ triggerCode, widgetId }) => {
+  console.debug('[Renderer::onTriggerWebhook] Dispatching webhook trigger to XLR', { triggerCode, widgetId });
+  xlr.triggerAction(triggerCode, widgetId);
+});
+
+window.playerAPI.onXlrExpireWidget((widgetId) => {
+  console.debug('[Renderer::onXlrExpireWidget] Expiring widget', { widgetId });
+  xlr.expireWidget(widgetId);
+});
+
+window.playerAPI.onXlrExtendWidgetDuration((widgetId, duration) => {
+  console.debug('[Renderer::onXlrExtendWidgetDuration] Extending widget duration', { widgetId, duration });
+  xlr.extendWidgetDuration(widgetId, duration);
+});
+
+window.playerAPI.onXlrSetWidgetDuration((widgetId, duration) => {
+  console.debug('[Renderer::onXlrSetWidgetDuration] Setting widget duration', { widgetId, duration });
+  xlr.setWidgetDuration(widgetId, duration);
 });
 
 let statusWindowHideTimer: ReturnType<typeof setTimeout> | null = null;
