@@ -64,9 +64,13 @@ export async function createFileServer(config: Config, mainWindow: BrowserWindow
 
   server.use('/files', express.static(xiboLibDir));
 
-  // ─── Local Player API ────────────────────────────────────────────────────────
+  // ─── Local Player API ──────────────────────────────────────────────────────── 
 
+  /**
+   * Returns non-sensitive player info.
+   */
   server.get('/info', (_req, res) => {
+    console.debug('[FileServer::info] > Returning player info');
     res.json({
       version: app.getVersion(),
       displayName: config.displayName ?? '',
@@ -81,57 +85,82 @@ export async function createFileServer(config: Config, mainWindow: BrowserWindow
     });
   });
 
+  /**
+   * Dispatches a trigger code to XLR. Optionally targets a specific widget by ID.
+   */
   server.post('/trigger', (req, res) => {
     const { trigger, id } = req.body ?? {};
     if (!trigger) {
       res.status(400).json({ success: false, error: 'trigger is required' });
       return;
     }
+    console.debug('[FileServer::trigger] > Dispatching trigger to XLR', { trigger, id });
     const payload: { triggerCode: string; widgetId?: string } = { triggerCode: trigger, widgetId: undefined };
     if (id != null) payload.widgetId = String(id);
     mainWindow.webContents.send('trigger-webhook', payload);
     res.json({ success: true });
   });
 
+  /**
+   * Immediately expires a widget's duration via XLR.
+   */
   server.post('/duration/expire', (req, res) => {
     const { id } = req.body ?? {};
     if (id == null) {
       res.status(400).json({ success: false, error: 'id is required' });
       return;
     }
+    console.debug('[FileServer::expireWidget] > Expiring widget', { id });
     mainWindow.webContents.send('xlr-expire-widget', String(id));
     res.json({ success: true });
   });
 
+  /**
+   * Extends a widget's remaining duration by the given number of seconds via XLR.
+   */
   server.post('/duration/extend', (req, res) => {
     const { id, duration } = req.body ?? {};
-    if (id == null || duration == null) {
-      res.status(400).json({ success: false, error: 'id and duration are required' });
+    if (id == null || duration == null || !Number.isFinite(Number(duration))) {
+      res.status(400).json({ success: false, error: 'id is required and duration must be a valid number' });
       return;
     }
+    console.debug('[FileServer::extendWidgetDuration] > Extending widget duration', { id, duration });
     mainWindow.webContents.send('xlr-extend-widget-duration', String(id), Number(duration));
     res.json({ success: true });
   });
 
+  /**
+   * Sets a widget's duration to a specific value in seconds via XLR.
+   */
   server.post('/duration/set', (req, res) => {
     const { id, duration } = req.body ?? {};
-    if (id == null || duration == null) {
-      res.status(400).json({ success: false, error: 'id and duration are required' });
+    if (id == null || duration == null || !Number.isFinite(Number(duration))) {
+      res.status(400).json({ success: false, error: 'id is required and duration must be a valid number' });
       return;
     }
+    console.debug('[FileServer::setWidgetDuration] > Setting widget duration', { id, duration });
     mainWindow.webContents.send('xlr-set-widget-duration', String(id), Number(duration));
     res.json({ success: true });
   });
 
+  /**
+   * Retrieves data from the player's real-time data store by dataKey.
+   * Not yet fully implemented pending the real-time data store.
+   */
   server.get('/realtime', (req, res) => {
     const { dataKey } = req.query;
     if (!dataKey) {
       res.status(400).json({ success: false, error: 'dataKey is required' });
       return;
     }
+    console.debug('[FileServer::realtime] > Received request', { dataKey });
     res.status(200).send();
   });
 
+  /**
+   * Updates schedule criteria metrics. Accepts an array of { metric, value, ttl } entries.
+   * TTL defaults to 300 seconds if not provided.
+   */
   server.post('/setCriteria', (req, res) => {
     const { criteriaUpdates } = req.body ?? {};
     if (!Array.isArray(criteriaUpdates)) {
@@ -139,6 +168,7 @@ export async function createFileServer(config: Config, mainWindow: BrowserWindow
       return;
     }
 
+    console.debug('[FileServer::setCriteria] > Updating criteria', { count: criteriaUpdates.length });
     let updated = 0;
     for (const entry of criteriaUpdates) {
       const { metric, value, ttl } = entry ?? {};
@@ -153,6 +183,10 @@ export async function createFileServer(config: Config, mainWindow: BrowserWindow
     res.json({ success: true, updated });
   });
 
+  /**
+   * Localhost-only. Reports a fault to the player, forwarded to CMS via XMDS.
+   * Intended for widgets running locally to report errors back to the player.
+   */
   server.post('/fault', (req, res) => {
     const ip = req.ip ?? '';
     if (ip !== '127.0.0.1' && ip !== '::1' && ip !== '::ffff:127.0.0.1') {
@@ -166,6 +200,7 @@ export async function createFileServer(config: Config, mainWindow: BrowserWindow
       return;
     }
 
+    console.debug('[FileServer::fault] > Reporting fault to player', { code, key, reason, ttl });
     const expires = DateTime.now().plus({ seconds: Number(ttl) }).toFormat('yyyy-MM-dd HH:mm:ss');
     const faultData: any = { code: Number(code), reason, expires };
 
