@@ -396,7 +396,7 @@ const configureExpress = () => {
     expressPath,
     appName,
   })
-  createFileServer(config);
+  createFileServer(config, mainWindow, faults);
 
   console.log(expressPath);
 
@@ -522,9 +522,9 @@ const initXmrEventHandlers = async function () {
    * Handles an incoming webhook trigger from the CMS. Forwards the trigger code
    * to the renderer so XLR can dispatch it to the active layout's action controller.
    */
-  xmr.on('triggerWebhook', (triggerCode: string) => {
-    console.debug('[XMR::triggerWebhook] Received webhook trigger', { triggerCode });
-    mainWindow.webContents.send('trigger-webhook', triggerCode);
+  xmr.on('triggerWebhook', (triggerCode: string, widgetId?: string) => {
+    console.debug('[XMR::triggerWebhook] Received webhook trigger', { triggerCode, widgetId });
+    mainWindow.webContents.send('trigger-webhook', { triggerCode, widgetId });
   });
 
   /**

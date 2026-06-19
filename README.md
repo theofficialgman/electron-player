@@ -132,3 +132,166 @@ These configuration files are auto-generated on the first run. You can then edit
     "cmsKey": ""
 }
 ```
+
+---
+
+### Local Player API
+
+The player runs a local HTTP server on port **9696** (configurable in Display Settings). Sources on the same device can reach it at `http://localhost:9696`. WAN connections can optionally be configured to allow access from other devices on the network; if not enabled, external requests are denied.
+
+The API follows the endpoint contract defined in [xibo-interactive-control](https://github.com/xibosignage/xibo-interactive-control).
+
+#### `GET /info`
+
+Returns basic, non-sensitive player information.
+
+**Response: `200 OK`**
+```json
+{
+  "version": "4.0.0",
+  "displayName": "Lobby Display",
+  "hardwareKey": "xxxx",
+  "screenWidth": 1920,
+  "screenHeight": 1080,
+  "longitude": 0,
+  "latitude": 0,
+  "timeZone": "",
+  "currentLayoutId": 42,
+  "displayStatus": 1
+}
+```
+
+---
+
+#### `POST /trigger`
+
+Passes a trigger code to the layout renderer. Optionally targets a specific widget by ID; omit `id` to apply the trigger globally.
+
+**Request body**
+```json
+{ "trigger": "my-trigger", "id": 123 }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `trigger` | Yes | Trigger code to pass to the layout renderer |
+| `id` | No | Target widget ID. If omitted, the trigger applies globally |
+
+**Responses**
+- `200 OK` — `{ "success": true }`
+- `400 Bad Request` — `{ "success": false, "error": "trigger is required" }`
+
+---
+
+#### `POST /duration/expire`
+
+Expires the specified widget immediately, advancing the region to the next media item.
+
+**Request body**
+```json
+{ "id": 1 }
+```
+
+**Response: `200 OK`** — `{ "success": true }`
+
+---
+
+#### `POST /duration/extend`
+
+Adds seconds to the widget's remaining duration.
+
+**Request body**
+```json
+{ "id": 1, "duration": 30 }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Target widget ID |
+| `duration` | Yes | Seconds to add to the remaining duration |
+
+**Response: `200 OK`** — `{ "success": true }`
+
+---
+
+#### `POST /duration/set`
+
+Sets the widget's duration to the given value in seconds.
+
+**Request body**
+```json
+{ "id": 1, "duration": 60 }
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | Target widget ID |
+| `duration` | Yes | New duration in seconds |
+
+**Response: `200 OK`** — `{ "success": true }`
+
+---
+
+#### `GET /realtime`
+
+Returns data from the player's real-time data store for the given key.
+
+**Query parameter**: `?dataKey=myKey`
+
+**Responses**
+- `200 OK` — JSON contents for the key, or empty body if no data exists for that key
+- `400 Bad Request` — if `dataKey` is not provided
+
+---
+
+#### `POST /setCriteria`
+
+Updates the schedule criteria used for dynamic layout selection. Sending the same metric again replaces the previous value. Expired entries are discarded and no longer affect schedule evaluation.
+
+**Request body**
+```json
+{
+  "criteriaUpdates": [
+    { "metric": "people", "value": "5", "ttl": 300 },
+    { "metric": "temperature", "value": "28 °C", "ttl": 300 },
+    { "metric": "emergency_alert_category", "value": "Geo", "ttl": 60 }
+  ]
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `metric` | Yes | Name of the data point |
+| `value` | Yes | Current value |
+| `ttl` | No | Seconds before the value expires. Defaults to `300` |
+
+**Responses**
+- `200 OK` — `{ "success": true, "updated": 3 }`
+- `400 Bad Request` — `{ "success": false, "error": "metric and value are required" }`
+
+---
+
+#### `POST /fault`
+
+Raises a player fault. Only accessible from localhost.
+
+If `key` contains `_`, the part after the underscore is parsed as the widget ID and the fault is raised with widget context. Otherwise the fault is raised without widget context.
+
+**Request body**
+```json
+{
+  "code": 5001,
+  "key": "widget_123",
+  "reason": "Widget failed to load",
+  "ttl": 60
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `code` | Yes | Fault code (integer) |
+| `key` | Yes | Fault key. If it contains `_`, the part after the underscore is the widget ID |
+| `reason` | Yes | Human-readable description |
+| `ttl` | Yes | Seconds before the fault expires |
+
+**Response: `200 OK`** — `{ "success": true }`
