@@ -59,6 +59,7 @@ export class Config {
   xmdsVersion: number | undefined;
   displayName: string | undefined;
   settings: any;
+  displayTags: Record<string, string> = {};
 
   // Device info
   macAddress: string = '';
@@ -198,6 +199,7 @@ export class Config {
     this.settings['sizeX'] = registerDisplay.getSetting('sizeX', 0);
     this.settings['sizeY'] = registerDisplay.getSetting('sizeY', 0);
     this.settings['sendCurrentLayoutAsStatusUpdate'] = registerDisplay.getSetting('sendCurrentLayoutAsStatusUpdate', false);
+    this.displayTags = registerDisplay.getTags();
     this.state.displayStatus = registerDisplay.status || 0;
 
     await this.saveCms();
@@ -256,6 +258,7 @@ export class Config {
       displayName: this.displayName,
       settings: this.settings,
       isConfigured: this.isConfigured(),
+      displayTags: this.displayTags,
       state: this.state.toJson(),
     });
   }
